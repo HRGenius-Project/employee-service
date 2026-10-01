@@ -1,0 +1,2 @@
+ALTER TABLE employees
+    ADD COLUMN employee_code VARCHAR(20) NOT NULL UNIQUE AFTER id;

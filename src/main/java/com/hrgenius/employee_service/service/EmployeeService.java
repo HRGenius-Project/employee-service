@@ -6,6 +6,7 @@ import com.hrgenius.employee_service.entity.Employee;
 import com.hrgenius.employee_service.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,12 +17,14 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
 
+    @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Employee already exists with email: " + request.getEmail());
         }
 
         Employee employee = Employee.builder()
+                .employeeCode(generateNextEmployeeCode())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -30,7 +33,7 @@ public class EmployeeService {
                 .designation(request.getDesignation())
                 .salary(request.getSalary())
                 .joiningDate(request.getJoiningDate() != null ? request.getJoiningDate() : LocalDate.now())
-                .status(request.getStatus() != null ? request.getStatus() : Employee.Status.ACTIVE)
+                .status(request.getStatus() != null ? request.getStatus() : Employee.Status.ONBOARDING)
                 .build();
 
         Employee saved = employeeRepository.save(employee);
@@ -49,6 +52,7 @@ public class EmployeeService {
         return mapToResponse(employee);
     }
 
+    @Transactional
     public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
@@ -82,9 +86,20 @@ public class EmployeeService {
         employeeRepository.deleteById(id);
     }
 
+    private String generateNextEmployeeCode() {
+        return employeeRepository.findTopByOrderByEmployeeCodeDesc()
+                .map(emp -> {
+                    String lastCode = emp.getEmployeeCode();
+                    int numericPart = Integer.parseInt(lastCode.replace("EMP", ""));
+                    return String.format("EMP%04d", numericPart + 1);
+                })
+                .orElse("EMP0001");
+    }
+
     private EmployeeResponse mapToResponse(Employee emp) {
         return EmployeeResponse.builder()
                 .id(emp.getId())
+                .employeeCode(emp.getEmployeeCode())
                 .firstName(emp.getFirstName())
                 .lastName(emp.getLastName())
                 .email(emp.getEmail())

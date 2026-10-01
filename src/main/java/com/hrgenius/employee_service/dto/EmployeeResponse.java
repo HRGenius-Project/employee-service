@@ -1,14 +1,17 @@
 package com.hrgenius.employee_service.dto;
 
 import com.hrgenius.employee_service.entity.Employee;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 import java.time.LocalDate;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class EmployeeResponse {
     private Long id;
+    private String employeeCode;
     private String firstName;
     private String lastName;
     private String email;

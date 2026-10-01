@@ -17,6 +17,9 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "employee_code", nullable = false, unique = true, length = 20)
+    private String employeeCode;
+
     @Column(nullable = false)
     private String firstName;
 
@@ -40,6 +43,7 @@ public class Employee {
     private Status status;
 
     public enum Status {
+        ONBOARDING,
         ACTIVE,
         ON_LEAVE,
         TERMINATED
