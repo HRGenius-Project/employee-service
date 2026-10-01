@@ -2,6 +2,7 @@ package com.hrgenius.employee_service.dto;
 
 import com.hrgenius.employee_service.entity.Employee;
 import lombok.*;
+
 import java.time.LocalDate;
 
 @Getter
@@ -21,4 +22,5 @@ public class EmployeeResponse {
     private Double salary;
     private LocalDate joiningDate;
     private Employee.Status status;
+    private String temporaryPassword;
 }

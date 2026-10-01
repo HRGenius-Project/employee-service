@@ -1,21 +1,30 @@
 package com.hrgenius.employee_service.service;
 
+import com.hrgenius.employee_service.client.AuthServiceClient;
 import com.hrgenius.employee_service.dto.EmployeeRequest;
 import com.hrgenius.employee_service.dto.EmployeeResponse;
+import com.hrgenius.employee_service.dto.InternalCreateUserRequest;
 import com.hrgenius.employee_service.entity.Employee;
 import com.hrgenius.employee_service.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final AuthServiceClient authServiceClient;
+
+    @Value("${internal.api-key:HRGeniusSecretKey2026}")
+    private String internalApiKey;
 
     @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
@@ -23,8 +32,11 @@ public class EmployeeService {
             throw new RuntimeException("Employee already exists with email: " + request.getEmail());
         }
 
+        String employeeCode = generateNextEmployeeCode();
+        String temporaryPassword = generateTemporaryPassword();
+
         Employee employee = Employee.builder()
-                .employeeCode(generateNextEmployeeCode())
+                .employeeCode(employeeCode)
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -37,7 +49,20 @@ public class EmployeeService {
                 .build();
 
         Employee saved = employeeRepository.save(employee);
-        return mapToResponse(saved);
+
+        // Internal call to Auth Service via Feign
+        InternalCreateUserRequest userRequest = InternalCreateUserRequest.builder()
+                .username(employeeCode)
+                .email(saved.getEmail())
+                .temporaryPassword(temporaryPassword)
+                .roles(Set.of("EMPLOYEE"))
+                .build();
+
+        authServiceClient.createInternalUser(internalApiKey, userRequest);
+
+        EmployeeResponse response = mapToResponse(saved);
+        response.setTemporaryPassword(temporaryPassword);
+        return response;
     }
 
     public List<EmployeeResponse> getAllEmployees() {
@@ -94,6 +119,16 @@ public class EmployeeService {
                     return String.format("EMP%04d", numericPart + 1);
                 })
                 .orElse("EMP0001");
+    }
+
+    private String generateTemporaryPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder("Tmp@");
+        for (int i = 0; i < 6; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     private EmployeeResponse mapToResponse(Employee emp) {
